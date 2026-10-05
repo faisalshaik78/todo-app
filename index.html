@@ -2,39 +2,31 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="A simple responsive to-do app built with HTML, CSS and vanilla JavaScript.">
-<title>To-Do App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Tasks</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main class="app">
-<header class="app-header">
-<p class="eyebrow">Productivity</p><h1>To-Do List</h1><p class="subtitle">Keep track of what needs to get done.</p>
-</header>
-<section class="add-task" aria-label="Add a task">
-<label class="sr-only" for="task-input">Task</label>
-<input id="task-input" type="text" maxlength="200" placeholder="What needs to be done?" autocomplete="off">
-<button id="add-task" type="button">Add task</button>
-</section>
-<section class="task-section" aria-labelledby="pending-heading">
-<div class="section-heading"><h2 id="pending-heading">Pending tasks</h2><span id="pending-count" class="count">0 pending</span></div>
-<ul id="pending-list" class="task-list" aria-live="polite"></ul>
-<p id="pending-empty" class="empty-state">You're all caught up. Add a task to get started.</p>
-</section>
-<section class="task-section" aria-labelledby="completed-heading">
-<div class="section-heading"><h2 id="completed-heading">Completed tasks</h2><span id="completed-count" class="count">0 completed</span></div>
-<ul id="completed-list" class="task-list" aria-live="polite"></ul>
-<p id="completed-empty" class="empty-state">Completed tasks will appear here.</p>
-</section>
+<main>
+  <h1>Daily tasks</h1>
+  <p class="sub">Add what you need to do, tick it off when it's done.</p>
+
+  <div class="add">
+    <input type="text" id="newTask" placeholder="What needs doing?" maxlength="200" aria-label="New task">
+    <button class="primary" id="addBtn">Add task</button>
+  </div>
+
+  <section aria-labelledby="ph">
+    <div class="head"><h2 id="ph">Pending tasks</h2><span class="count" id="pendingCount">0 pending</span></div>
+    <ul id="pendingList"></ul>
+  </section>
+
+  <section aria-labelledby="ch">
+    <div class="head"><h2 id="ch">Completed tasks</h2><span class="count" id="completedCount">0 completed</span></div>
+    <ul id="completedList"></ul>
+  </section>
 </main>
-<template id="task-template">
-<li class="task-item">
-<div class="task-main"><input class="task-checkbox" type="checkbox" aria-label="Mark task as completed">
-<div class="task-content"><span class="task-text"></span><div class="task-meta"></div></div></div>
-<div class="task-actions"><button class="edit-button" type="button">Edit</button><button class="delete-button danger" type="button">Delete</button></div>
-</li>
-</template>
+
 <script src="script.js"></script>
 </body>
 </html>

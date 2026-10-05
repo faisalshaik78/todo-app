@@ -1,14 +1,119 @@
-const STORAGE_KEY="todo-tasks-v1";
-const taskInput=document.querySelector("#task-input"),addTaskButton=document.querySelector("#add-task"),pendingList=document.querySelector("#pending-list"),completedList=document.querySelector("#completed-list"),pendingCount=document.querySelector("#pending-count"),completedCount=document.querySelector("#completed-count"),pendingEmpty=document.querySelector("#pending-empty"),completedEmpty=document.querySelector("#completed-empty"),taskTemplate=document.querySelector("#task-template");
-let tasks=load();
-function load(){try{const saved=localStorage.getItem(STORAGE_KEY),parsed=saved?JSON.parse(saved):[];return Array.isArray(parsed)?parsed.filter(t=>t&&typeof t.id==="string"&&typeof t.text==="string"&&typeof t.done==="boolean"):[]}catch{return[]}}
-function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(tasks))}catch{}}
-function createTask(text){const now=new Date().toISOString();return{id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),text,done:false,added:now,completed:null}}
-function formatDate(value){if(!value)return"";const date=new Date(value);if(Number.isNaN(date.getTime()))return"";return new Intl.DateTimeFormat(undefined,{dateStyle:"medium",timeStyle:"short"}).format(date)}
-function addTask(){const text=taskInput.value.trim();if(!text){taskInput.focus();return}tasks.unshift(createTask(text));taskInput.value="";save();render();taskInput.focus()}
-function toggleTask(id,done){const task=tasks.find(item=>item.id===id);if(!task)return;task.done=done;task.completed=done?new Date().toISOString():null;save();render()}
-function deleteTask(id){tasks=tasks.filter(task=>task.id!==id);save();render()}
-function startEdit(task,textElement,actionsElement){const form=document.createElement("form");form.className="edit-form";const input=document.createElement("input");input.type="text";input.maxLength=200;input.value=task.text;input.setAttribute("aria-label","Edit task");const saveButton=document.createElement("button");saveButton.type="submit";saveButton.className="save-button";saveButton.textContent="Save";const cancelButton=document.createElement("button");cancelButton.type="button";cancelButton.className="cancel-button";cancelButton.textContent="Cancel";form.append(input,saveButton,cancelButton);textElement.replaceWith(form);actionsElement.hidden=true;input.focus();input.select();const finish=shouldSave=>{const value=input.value.trim();if(shouldSave&&value){task.text=value;save()}render()};form.addEventListener("submit",event=>{event.preventDefault();finish(true)});cancelButton.addEventListener("click",()=>finish(false));input.addEventListener("keydown",event=>{if(event.key==="Escape")finish(false)})}
-function buildTask(task){const item=taskTemplate.content.firstElementChild.cloneNode(true);if(task.done)item.classList.add("completed");const checkbox=item.querySelector(".task-checkbox"),textElement=item.querySelector(".task-text"),metaElement=item.querySelector(".task-meta"),editButton=item.querySelector(".edit-button"),deleteButton=item.querySelector(".delete-button"),actions=item.querySelector(".task-actions");checkbox.checked=task.done;checkbox.setAttribute("aria-label",task.done?"Mark task as pending":"Mark task as completed");textElement.textContent=task.text;metaElement.textContent="Added "+formatDate(task.added)+(task.completed?" • Completed "+formatDate(task.completed):"");checkbox.addEventListener("change",()=>toggleTask(task.id,checkbox.checked));editButton.addEventListener("click",()=>startEdit(task,textElement,actions));deleteButton.addEventListener("click",()=>deleteTask(task.id));return item}
-function render(){pendingList.replaceChildren();completedList.replaceChildren();const pending=tasks.filter(t=>!t.done),completed=tasks.filter(t=>t.done);pending.forEach(t=>pendingList.appendChild(buildTask(t)));completed.forEach(t=>completedList.appendChild(buildTask(t)));pendingCount.textContent=pending.length+" pending";completedCount.textContent=completed.length+" completed";pendingEmpty.hidden=pending.length>0;completedEmpty.hidden=completed.length>0}
-addTaskButton.addEventListener("click",addTask);taskInput.addEventListener("keydown",event=>{if(event.key==="Enter")addTask()});render();
+(function(){
+  var KEY = "todo-tasks-v1";
+  var tasks = load();
+  var editingId = null;
+
+  var input = document.getElementById("newTask");
+  var pendingList = document.getElementById("pendingList");
+  var completedList = document.getElementById("completedList");
+
+  function load(){
+    try { var d = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(d) ? d : []; }
+    catch(e){ return []; }
+  }
+  function save(){
+    try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch(e){}
+  }
+  function fmt(ts){
+    return new Date(ts).toLocaleString([], {day:"numeric", month:"short", hour:"numeric", minute:"2-digit"});
+  }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function addTask(){
+    var text = input.value.trim();
+    if(!text){ input.focus(); return; }
+    tasks.unshift({id:uid(), text:text, done:false, added:Date.now(), completed:null});
+    input.value = "";
+    save(); render(); input.focus();
+  }
+  function toggle(id){
+    var t = find(id); if(!t) return;
+    t.done = !t.done;
+    t.completed = t.done ? Date.now() : null;
+    save(); render();
+  }
+  function remove(id){
+    tasks = tasks.filter(function(t){ return t.id !== id; });
+    if(editingId === id) editingId = null;
+    save(); render();
+  }
+  function find(id){ return tasks.filter(function(t){ return t.id === id; })[0]; }
+  function commitEdit(id, value){
+    var t = find(id), v = value.trim();
+    if(t && v) t.text = v;
+    editingId = null; save(); render();
+  }
+
+  function el(tag, cls, text){
+    var n = document.createElement(tag);
+    if(cls) n.className = cls;
+    if(text != null) n.textContent = text;
+    return n;
+  }
+  function btn(label, cls, fn){
+    var b = el("button", cls, label);
+    b.type = "button"; b.addEventListener("click", fn);
+    return b;
+  }
+
+  function item(t){
+    var li = el("li", t.done ? "done" : "");
+    var cb = el("input"); cb.type = "checkbox"; cb.checked = t.done;
+    cb.setAttribute("aria-label", t.done ? "Mark as pending" : "Mark complete");
+    cb.title = t.done ? "Mark as pending" : "Mark complete";
+    cb.addEventListener("change", function(){ toggle(t.id); });
+    li.appendChild(cb);
+
+    var body = el("div", "body");
+    if(editingId === t.id){
+      var ei = el("input", "edit-input"); ei.type = "text"; ei.value = t.text; ei.maxLength = 200;
+      ei.setAttribute("aria-label", "Edit task");
+      ei.addEventListener("keydown", function(e){
+        if(e.key === "Enter") commitEdit(t.id, ei.value);
+        if(e.key === "Escape"){ editingId = null; render(); }
+      });
+      body.appendChild(ei);
+      li.appendChild(body);
+      var a = el("div", "actions");
+      a.appendChild(btn("Save", "", function(){ commitEdit(t.id, ei.value); }));
+      a.appendChild(btn("Cancel", "", function(){ editingId = null; render(); }));
+      li.appendChild(a);
+      setTimeout(function(){ ei.focus(); ei.select(); }, 0);
+    } else {
+      body.appendChild(el("span", "text", t.text));
+      body.appendChild(el("span", "time",
+        "Added " + fmt(t.added) + (t.done && t.completed ? " · Completed " + fmt(t.completed) : "")));
+      li.appendChild(body);
+      var act = el("div", "actions");
+      act.appendChild(btn("Edit", "", function(){ editingId = t.id; render(); }));
+      act.appendChild(btn("Delete", "danger", function(){ remove(t.id); }));
+      li.appendChild(act);
+    }
+    return li;
+  }
+
+  function fill(list, items, emptyMsg){
+    list.innerHTML = "";
+    if(!items.length){
+      var li = el("li", "empty", emptyMsg);
+      li.style.display = "block";
+      list.appendChild(li);
+      return;
+    }
+    items.forEach(function(t){ list.appendChild(item(t)); });
+  }
+
+  function render(){
+    var p = tasks.filter(function(t){ return !t.done; });
+    var c = tasks.filter(function(t){ return t.done; })
+                 .sort(function(a,b){ return (b.completed||0) - (a.completed||0); });
+    document.getElementById("pendingCount").textContent = p.length + " pending";
+    document.getElementById("completedCount").textContent = c.length + " completed";
+    fill(pendingList, p, "Nothing pending. Add a task above to get started.");
+    fill(completedList, c, "No completed tasks yet. Finish something and it will show up here.");
+  }
+
+  document.getElementById("addBtn").addEventListener("click", addTask);
+  input.addEventListener("keydown", function(e){ if(e.key === "Enter") addTask(); });
+  render();
+})();
