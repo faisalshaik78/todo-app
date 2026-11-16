@@ -8,8 +8,22 @@
   var completedList = document.getElementById("completedList");
 
   function load(){
-    try { var d = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(d) ? d : []; }
-    catch(e){ return []; }
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY));
+      if(!Array.isArray(d)) return [];
+      return d.filter(function(t){
+        return t && typeof t.id === "string" && t.id &&
+          typeof t.text === "string" && t.text.trim();
+      }).map(function(t){
+        return {
+          id: t.id,
+          text: t.text,
+          done: t.done === true,
+          added: Number.isFinite(t.added) ? t.added : Date.now(),
+          completed: Number.isFinite(t.completed) ? t.completed : null
+        };
+      });
+    } catch(e){ return []; }
   }
   function save(){
     try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch(e){}
